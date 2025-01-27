@@ -40,7 +40,7 @@ Not that not all train data is necessarrily used in the manufacturability estima
 
 <h2>Downstream Results</h2>
 <p>Post pretraining, the decoder is discarded, and the encoder’s latent code layer is extended with two additional linear layers tasked with the downstream manufacturability labels. We have benchmarked each model using probing and funetuning, as the following figure:</p>
-<img src="img/downstream.png" width="1000">
+<img src="img/downstream.png" width="500">
 <p>The figures reveal performance of VIRl’s pretrained model vs the state of the art surface rendering and UV net, across 4 case studies with varying number of training labels from 50 to 10000. X axis is number of simulation labels (shots) given, y axis is the test R2 score.</p>
 <img src="img/results.png" width="1000">
 
@@ -49,11 +49,11 @@ Not that not all train data is necessarrily used in the manufacturability estima
 Next run this:</p>
 <p><pre><code>python few_shot_exp-v8-6-lora.py --yaml config/xxx.yaml</code></pre></p>
 
-<p>Key control terms: \nregress_tdi: whether to include task dependent input \nlabel_root: manufacturability 
-    label directory \npartial: None to exclude LoRA finetuning \nrank: If using LoRA, rank number \npre_path: pretrained model path 
-    \nrange_log: whether to apply log on manufacturability labels \nnorm_const: whether to multiply labels by a constant 
-    \nrange_root: input to calculate TDI \nregress_norm: True for dynamic norm, False for static norm \nseed: shot selection randomness
-    \nshots: number of training labels \splits: The train/val/test split for manufacturability downstream tasks. Because each simulation has
+<p>Key control terms: <br>regress_tdi: whether to include task dependent input <br>label_root: manufacturability 
+    label directory <br>partial: None to exclude LoRA finetuning <br>rank: If using LoRA, rank number <br>pre_path: pretrained model path 
+    <br>range_log: whether to apply log on manufacturability labels <br>norm_const: whether to multiply labels by a constant 
+    <br>range_root: input to calculate TDI <br>regress_norm: True for dynamic norm, False for static norm <br>seed: shot selection randomness
+    <br>shots: number of training labels \splits: The train/val/test split for manufacturability downstream tasks. Because each simulation has
     a few failures, we create separate splitting json files for each manufacturability case study.</p>
 
 <h3>tSNE Visualization</h3>
