@@ -1,0 +1,16 @@
+hidden : 1024
+lr : 0.0001
+end_lr : 0.000001
+num_warmup_steps: 20
+iteration: 200000
+# box_iter: 1000
+train_batch: 64
+drop_end: 0
+drop_p: 0.0
+grid_res: 40
+
+test_batch: 64
+gpu : 1
+val_every: 200
+samples: 2000
+save_dir : pretrain_experiment
