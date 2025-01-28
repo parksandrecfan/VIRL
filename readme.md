@@ -19,8 +19,8 @@
 <h3>code</h3>
 <p>To run the pretraining code, locate the BRep graph (<a href="https://cmu.box.com/s/q8acaeisz86u16s6mbca0spg3idvyojk">[simple_processed]</a>), SDF (<a href="https://cmu.box.com/s/nhm1a7hrw41jvxx1ny1o3tgu83f5cah0">[sdf_40]</a>), and the extracted height, width, length (<a href="https://cmu.box.com/s/7mxd41nwc2p6pxqomu97bn0246yfk938">[range]</a>).</p>
 <p>Then, run the pretrainig code as follows:</p>
-<p><pre><code>python pretrain-v14.py --yaml pretrain-exp22.yaml</code></pre></p>
-<p>The pretrained model can be downloaded <a href="https://cmu.box.com/s/z6epaqddi81frp932zfcm9aav1arsa1d">[here]</a>.</p>
+<p><pre><code>python pretrain.py --yaml pretrain.yaml</code></pre></p>
+<p>If you wish to use the pretrained model directly, it can be downloaded <a href="https://cmu.box.com/s/z6epaqddi81frp932zfcm9aav1arsa1d">[here]</a>.</p>
 <h2>Simulations (Manufacturability Label Generation)</h2>
 <p>We chose 4 different mannufacturability tasks, spanning from plastic to metallic, subtractive machining to additive manufacturing, time estimation to structural physics quantites, in attempt to showcase our foundation model can be applied on wide range of manufacturability applications.</p>
 <img src="img/simulations.png" width="1000">
@@ -47,7 +47,10 @@ Not that not all train data is necessarrily used in the manufacturability estima
 <h3>code</h3>
 <p>To run the code, make sure you download the <a href="https://cmu.box.com/s/dlshmcn8o2wj63tldz01v5ola5vg8mdc">[manufacturability labels]</a> first, and also have the <a href="https://cmu.box.com/s/q8acaeisz86u16s6mbca0spg3idvyojk">[BRep files]</a> available.
 Next run this:</p>
-<p><pre><code>python few_shot_exp-v8-6-lora.py --yaml config/xxx.yaml</code></pre></p>
+<p><pre><code>python few_shot_exp.py --yaml config/few_shot_print_time.yaml</code></pre></p>
+<p><pre><code>python few_shot_exp.py --yaml config/few_shot_cnc.yaml</code></pre></p>
+<p><pre><code>python few_shot_exp.py --yaml config/few_shot_recoat.yaml</code></pre></p>
+<p><pre><code>python few_shot_exp.py --yaml config/few_shot_stress.yaml</code></pre></p>
 
 <p>Key control terms: <br>regress_tdi: whether to include task dependent input <br>label_root: manufacturability 
     label directory <br>partial: None to exclude LoRA finetuning <br>rank: If using LoRA, rank number <br>pre_path: pretrained model path 
@@ -55,7 +58,9 @@ Next run this:</p>
     <br>range_root: input to calculate TDI <br>regress_norm: True for dynamic norm, False for static norm <br>seed: shot selection randomness
     <br>shots: number of training labels \splits: The train/val/test split for manufacturability downstream tasks. Because each simulation has
     a few failures, we create separate splitting json files for each manufacturability case study.</p>
-
+<p>We have implemented task dependent input for two case studies.</p>
+<p>1. CNC machining time, TDI is subtracted volume, and it can be downloaded <a href="https://cmu.box.com/s/pn311ogiqhc8wybpjxollcghnipzv96s">[here]</a>.</p>
+<p>2. 3D printing time. TDI is the regression model with volume, area and height as input, and it can be downloaded <a href="https://cmu.box.com/s/94eoxuqdz4xvwof7sfgtl44614tqcmc2">[here]</a>.</p>
 <h3>tSNE Visualization</h3>
 <p>Code for generating latent vectors from a pretrained model and its 2D tSNE visualization can be found in the notebook dimension_reduction.ipynb.</p>
 

@@ -14,3 +14,8 @@ gpu : 1
 val_every: 200
 samples: 2000
 save_dir : pretrain_experiment
+
+splits: "pretrain.json"
+data_root: "simple_preprocessed"
+range_root: "range"
+label_root: "sdf_40/dic"

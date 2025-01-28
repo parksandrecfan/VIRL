@@ -1,12 +1,9 @@
-# new stuff:
-# deepbox
+
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-# decode
 import torch.nn as nn
 import torch.optim as optim
-# from torch.optim import lr_scheduler
 
 import pickle
 import json
@@ -18,16 +15,7 @@ import argparse
 import shutil
 from sklearn.metrics import r2_score
 import math
-# train_batch=64
-# test_batch=64
-# hidden = 32
-# lr = 0.001
-# lr_step = 200
-# gamma = 0.99
-# gpu = 2
-# iteration=100
-# val_every=20
-# save_dir = "project/brep2sdf-32"
+
 
 def run(args):
     yaml_file_path = args.yaml
@@ -36,24 +24,26 @@ def run(args):
         # Load the YAML content
         config = yaml.safe_load(file)
 
+
     train_batch=config["train_batch"] #64
     test_batch=config["test_batch"] #64
     hidden = config["hidden"] #32
     lr = config["lr"] #0.001
     num_warmup_steps = config['num_warmup_steps']
     end_lr =  config['end_lr']
-    # lr_step = config["lr_step"] #200
-    # gamma = config["gamma"] #0.99
     gpu = config["gpu"] #2
     iteration= config["iteration"] #50000tt
     val_every= config["val_every"] #20
     save_dir = config["save_dir"]+"/"+yaml_file_path.split('/')[-1].split('.')[0] #"pretrain_experiment"
     drop = config["drop_p"] #0.2
-
-    
     drop_end = config['drop_end']
     samples = config["samples"] #5000 maybe a good start
     grid_res = config["grid_res"] # 20 or 40
+    splits = config['splits']
+    data_root = config['data_root']
+    range_root = config['range_root']
+    label_root = config['label_root']
+
     sel_sample_pct = 0.4
     sel_sample_num = int(samples*sel_sample_pct)
     rand_sample_num = samples-sel_sample_num
@@ -61,7 +51,6 @@ def run(args):
     
     shutil.copy(yaml_file_path, save_dir+"/config.yaml")
     max_grad_norm=0.5
-    # grid_res = 20
     
     for key, value in config.items():
         print(f'{key}: {value}')
@@ -80,17 +69,15 @@ def run(args):
     class deepsdf(nn.Module):
         def __init__(self):
             super(deepsdf, self).__init__()
-            self.lin1 = nn.utils.weight_norm(nn.Linear(72,1024)) #5(xyz and 123combo)+64+3(UVW)
-            self.lin2 = nn.utils.weight_norm(nn.Linear(1091,1024)) # from this point just 64+uvw
+            self.lin1 = nn.utils.weight_norm(nn.Linear(72,1024))
+            self.lin2 = nn.utils.weight_norm(nn.Linear(1091,1024))
             self.lin3 = nn.utils.weight_norm(nn.Linear(1091,1024))
             self.lin4 = nn.utils.weight_norm(nn.Linear(1091,1))
-            # self.act = nn.ReLU()
             self.act = nn.LeakyReLU(negative_slope=0.001)
             
         def forward(self, data_latent): #nx72
                    
             latent2skip = data_latent[:,:,5:] #nx67
-            # print(latent2skip.shape, data_latent.shape)
             data_latent = self.act(self.lin1(data_latent))
             data_latent = torch.cat((data_latent, latent2skip), axis=2)
             data_latent = self.act(self.lin2(data_latent))
@@ -103,12 +90,6 @@ def run(args):
     
     class BRep_sdf_ds(torch.utils.data.Dataset):
     
-        # (tensor([ True, False, False]),
-        #  tensor(True),
-        #  tensor(0),
-        #  tensor([-10.0000,   9.9994,  -2.1239,   2.1239, -10.0000,   9.9994]))
-    
-        
         def flip48(self, data_range, dist, sel_ps, flip=[False,False,False], reverse = False, rollaxis=0):
             sdf3d = dist.reshape((40,40,40))
             for i in range(3):
@@ -134,14 +115,12 @@ def run(args):
                         sel_ps[:,0] = sel_ps2
                         sel_ps[:,1] = sel_ps0
                         sel_ps[:,2] = sel_ps1
-                        # sel_ps = torch.roll(sel_ps, 1)
                     elif rollaxis==2: #1, 2, 0
                         sdf3d = torch.transpose(torch.transpose(sdf3d, 0,1),1,2)
                         data_range = torch.roll(data_range, 4)
                         sel_ps[:,0] = sel_ps1
                         sel_ps[:,1] = sel_ps2
                         sel_ps[:,2] = sel_ps0
-                        # sel_ps = torch.roll(sel_ps, 2)
                     
             elif reverse==True:
                 orig_x = data_range[0:2].clone()
@@ -163,14 +142,12 @@ def run(args):
                         sel_ps[:,0] = sel_ps2
                         sel_ps[:,1] = sel_ps0
                         sel_ps[:,2] = sel_ps1
-                        # sel_ps = torch.roll(sel_ps, 1)
                     elif rollaxis==2: # 1, 0, 2
                         sdf3d = torch.transpose(sdf3d, 0,1)
                         data_range = torch.roll(data_range, 4)
                         sel_ps[:,0] = sel_ps1
                         sel_ps[:,1] = sel_ps2
                         sel_ps[:,2] = sel_ps0
-                        # sel_ps = torch.roll(sel_ps, 2)
                     
             return data_range, sdf3d.flatten(), sel_ps
         
@@ -229,11 +206,8 @@ def run(args):
             bound = torch.tensor(np.array(dist_label["bound"])).float()[0] #for output
             sel_idxs = torch.randint(low=0, high=bound.shape[0], size=(self.sel_sample_num,))
             sel_bds = bound[sel_idxs].int() # the actual index of bounds
-            # print(sel_bds.shape, dist.shape)
             sel_sdfs = dist[sel_bds]
     
-            # xyz: 6 types
-            # front or back for 3 axis: 8 types
             z = sel_bds%grid_res
             y = (sel_bds//grid_res)%grid_res
             x = (sel_bds//(grid_res**2))%grid_res
@@ -272,17 +246,12 @@ def run(args):
             self.proj = LinearBlock(hidden_size, 64)
         def forward(self, data):
             v = self.v_in(data.vertex_positions)
-            # v = self.drop_layer(v)
             e = torch.cat([data.edge_curves, data.edge_curve_parameters, data.edge_curve_flipped.reshape((-1,1))], dim=1)
             e = self.e_in(e)
-            # e = self.drop_layer(e)
             l = self.l_in(data.loop_types.float())
-            # l = self.drop_layer(l)
             f = torch.cat([data.face_surfaces, data.face_surface_parameters, data.face_surface_flipped.reshape((-1,1))], dim=1)
             f = self.f_in(f)
-            # f = self.drop_layer(f)
-            # TODO - incorporate edge-loop data and vert-edge data
-            # Potential TODO - heterogenous input of edges and curves based on function type
+
             e = self.v_to_e(v, e, data.edge_to_vertex[[1,0]])
             e = self.drop_layer(e)
             l = self.e_to_l(e, l, data.loop_to_edge[[1,0]])
@@ -297,22 +266,16 @@ def run(args):
             self.lin1 = nn.utils.weight_norm(nn.Linear(69,64)) #64+3(UVW)
             self.lin2 = nn.utils.weight_norm(nn.Linear(128,64))
             self.lin3 = nn.utils.weight_norm(nn.Linear(128,3))
-            # self.act = nn.ReLU()
             self.act = nn.LeakyReLU(negative_slope=0.001)
             
         def forward(self, pooled_data):
             skip_data = pooled_data[:,5:]
             data_latent = pooled_data
             data_latent = self.act(self.lin1(data_latent))
-            # print(data_latent.shape, pooled_data.shape)
             data_latent = torch.cat((data_latent, skip_data), axis=1)
-            # print(data_latent.shape)
             data_latent = self.act(self.lin2(data_latent))
-            # print(data_latent.shape)
             data_latent = torch.cat((data_latent, skip_data), axis=1)
-            # print(data_latent.shape)
             data_latent = self.act(self.lin3(data_latent))
-            # print(data_latent.shape) # batchx3
             return data_latent
             
     class BRepVolAutoencoder(nn.Module):
@@ -321,13 +284,9 @@ def run(args):
             self.encoder = BRepFaceEncoder(code_size)
             self.decoder1 = deepbox()
             self.decoder2 = deepsdf()
-            # self.decoder = ImplicitDecoder(code_size+2, 4, hidden_size, decoder_layers, use_tanh=False)
         
-        def forward(self, data, uvw, aug):
-            
+        def forward(self, data, uvw, aug):            
             codes = self.encoder(data)
-            # print(codes)
-            # print(codes.device)
             
             # Create an empty tensor to store the pooled segments
             pooled_data = torch.zeros(len(data.face_ct), codes.size(1), dtype=codes.dtype, device=codes.device)
@@ -341,31 +300,19 @@ def run(args):
                 end = cumulative_sums[i]
                 segment = codes[int(start):int(end)]
                 pooled_segment = torch.max(segment, 0)[0]
-                # pooled_segment = F.adaptive_max_pool1d(segment.permute(1, 0).unsqueeze(0), (1,)).squeeze(0).permute(1, 0)
                 pooled_data[i] = pooled_segment
             
-            # print(uvw.shape) #8x50x3
-            # batch_pts = self.pts.unsqueeze(0).repeat(data.face_ct.shape[0],1,1)
             pooled_data_aug = torch.cat((aug, pooled_data), axis=1) #batchx64+batchx5
-            # print(pooled_data.shape, aug.shape, pooled_data_aug.shape) #8x64
             box = self.decoder1(pooled_data_aug) #xr, yr, zr
-            # we can map box back if we want to?
             '''scale input here'''
             batch_aug = aug.unsqueeze(1).repeat(1,uvw.shape[1],1)
             scaled_uvw = torch.einsum('abc,ac->abc',uvw, box) #-0.5~0.5->-10~10
             batch_latent = pooled_data.unsqueeze(1).repeat(1,scaled_uvw.shape[1],1)
-            # batch_range = data_range.unsqueeze(1).repeat(1,self.xn*self.yn*self.zn,1)
-            # print(batch_latent.shape) #8x50x64
             data_latent = torch.cat((batch_aug, batch_latent, uvw), axis=2).float() #5+64+3
-            # print(data_latent.shape) #8x50x67
-            # print("pts:",batch_pts.shape)
-            # print("latent:",batch_latent.shape)
-            # print("range:",batch_range.shape)
-            # print("cat:", data_latent.shape) #64*8000*72
+            
             pred = self.decoder2(data_latent)
-            # print(pred.shape) #8x50x4
             return pred, box
-    #warmp up start
+    
     def cosine_lr_schedule(
         num_warmup_steps: int,
         num_training_steps: int,
@@ -476,38 +423,12 @@ def run(args):
         yr = ymax-ymin
         zr = zmax-zmin
     
-        truth = vs # in v12, only predicing sdf and box loss
+        truth = vs
         hwl = torch.stack((xr, yr, zr)).T # only for plotting
         
-        # print(hwl.shape)
-        # print(hwl)
         norm_ps = ps/(grid_res-1)
-        # ps.shape # torch.Size([8, 50000, 3])
-        # real_x = norm_ps[:,:,0]*xr.reshape(-1,1)+xmin.reshape(-1,1)
-        # real_y = norm_ps[:,:,1]*yr.reshape(-1,1)+ymin.reshape(-1,1)
-        # real_z = norm_ps[:,:,2]*zr.reshape(-1,1)+zmin.reshape(-1,1)
-
         return norm_ps, truth, hwl #ps is uvw, set to 0~19. norm_ps is 0~1
         
-    # def get_bound_truth(data_range, sel_ps, sel_sdfs):
-    #     xmin = data_range[:,0]
-    #     xmax = data_range[:,1]
-    #     ymin = data_range[:,2]
-    #     ymax = data_range[:,3]
-    #     zmin = data_range[:,4]
-    #     zmax = data_range[:,5]
-        
-    #     xr = xmax-xmin
-    #     yr = ymax-ymin
-    #     zr = zmax-zmin
-    
-    #     sel_x = sel_ps[:,:,0]*xr.reshape(-1,1)+xmin.reshape(-1,1)
-    #     sel_y = sel_ps[:,:,1]*yr.reshape(-1,1)+ymin.reshape(-1,1)
-    #     sel_z = sel_ps[:,:,2]*zr.reshape(-1,1)+zmin.reshape(-1,1)
-        
-    #     sel_truth = torch.stack((sel_x, sel_y, sel_z, sel_sdfs)).permute(1,2,0)
-    #     # sel_truth = torch.cat((sel_ps*hwl, sel_sdfs.unsqueeze(2)), dim=2)
-    #     return sel_truth
             
     import sys
     sys.path.append('automatemain')
@@ -515,33 +436,14 @@ def run(args):
     from automate.sbgcn import LinearBlock, BipartiteResMRConv 
     sys.path.remove('automatemain')
     
-    ds = BRep_sdf_ds(splits='inputs/data/simple_train_test.json', data_root='inputs/data/simple_preprocessed', \
-                    range_root = 'inputs/latent/range', mode='train', validate_pct=5, preshuffle=False,\
-                    label_root = 'inputs/sdf_%s/dic'%grid_res, label_ext = 'pt',sel_sample_num=sel_sample_num)
-    ds_val = BRep_sdf_ds(splits='inputs/data/simple_train_test.json', data_root='inputs/data/simple_preprocessed', \
-                         range_root = 'inputs/latent/range', mode='validate', validate_pct=5, preshuffle=False,\
-                         label_root = 'inputs/sdf_%s/dic'%grid_res, label_ext = 'pt', sel_sample_num=sel_sample_num)
-    # print(ds_val.all_names)
-    # print(len(ds_val))
-    # print(set_val)
-    
-    # make validation data the same, so downstream tasks can go from here
-    # new_json = "inputs/data/simple_train_val_test.json"
-    # new_dic = {}
-    # new_dic['train']=ds.all_names
-    # new_dic['val'] = ds_val.all_names
-    
-    # original_json='inputs/data/simple_train_test.json'
-    # with open(original_json, 'r') as f:
-    #     new_dic['test'] = json.load(f)['test']
-        
-    # with open(new_json, "w") as f:
-    #     json.dump(new_dic, f)
-    # print(agdsg)
-    # set_train = set(ds.all_names)
-    # print(set_train.intersection(set_val))
+    ds = BRep_sdf_ds(splits=splits, data_root=data_root, \
+                    range_root = range_root, mode='train', validate_pct=5, preshuffle=False,\
+                    label_root = label_root, label_ext = 'pt',sel_sample_num=sel_sample_num)
+    ds_val = BRep_sdf_ds(splits=splits, data_root=data_root, \
+                         range_root = range_root, mode='validate', validate_pct=5, preshuffle=False,\
+                         label_root = label_root, label_ext = 'pt', sel_sample_num=sel_sample_num)
+
     print(f'Train Set size = {len(ds)}')
-    # ds_val = BRepDS('project/data/simple_train_test.json', 'project/data/simple_preprocessed', 'validate')
     print(f'Val Set Size = {len(ds_val)}')
     dl = tg.loader.DataLoader(ds, batch_size=train_batch, shuffle=True, num_workers=8, persistent_workers=True)
     dl_val = tg.loader.DataLoader(ds_val, batch_size=test_batch, shuffle=False, num_workers=8, persistent_workers=True)
@@ -565,8 +467,6 @@ def run(args):
 
     
     lr_schedule = cosine_lr_schedule(num_warmup_steps, iteration, end_lr, lr)
-    # optimizer = optim.Adam(model.decoder.parameters(), lr=0.001)
-    # scheduler = lr_scheduler.StepLR(optimizer, step_size=lr_step, gamma=gamma) # after training lr->8e-5
     
     train_loss_log=[]
     train_loss_log_avg=[]
@@ -576,23 +476,17 @@ def run(args):
     batch_ct = 1
     
     for i in range(iteration):
-        # print(model.encoder.drop_layer)
         # warmup+cosine anneal
         lr = lr_schedule(i)
         set_lr(optimizer, lr)
-        # for g in optimizer.param_groups:
-        #     print(g["lr"])
         
-        # print(model.encoder.v_in.f[0].bias.sum().item(), model.decoder.lin1.bias.sum().item())
         model.train()
         optimizer.zero_grad()
         data, data_range, dist, sel_ps, sel_sdfs, flip, reverse, rollaxis = next(itering)
         aug = torch.cat((flip, reverse.unsqueeze(1), rollaxis.unsqueeze(1)), dim=1)
-        # aug_batch = aug.unsqueeze(1).repeat(1,samples,1)
-        # data, data_range, dist  = next(itering)
         
         if (data_range.shape[0]<train_batch) == True:
-            print("%s batch done"%batch_ct)
+            # print("%s batch done"%batch_ct)
             itering = iter(dl)
             batch_ct+=1
         
@@ -602,30 +496,21 @@ def run(args):
         sel_ps = sel_ps.to(device)
         sel_sdfs =  sel_sdfs.to(device)
         aug = aug.to(device)
-
-        
-        # print(model(x)[:,:,0].shape, y.shape)
         
         uvw, truth, hwl= get_truth(dist, data_range, rand_sample_num, grid_res, device, mode='random') # batch * points# * 4
-        # sel_truth = get_bound_truth(data_range, sel_ps, sel_sdfs)
         sel_truth=sel_sdfs
         
         truth_all = torch.cat((sel_truth, truth),1) # 4->1
         uvw_all = torch.cat((sel_ps, uvw),1)
         # print(uvw_all.shape, aug_batch.shape) batch x samples x 3 or 5
         pred, box = model(data, uvw_all, aug) #batch*points*4
-        
-        # print(pred.shape, box.shape, truth_all.shape) #8x50x4, 80x50x4
 
         recon_loss=torch.mean((pred-truth_all)**2)
         box_loss=torch.mean((box-hwl)**2)
         train_loss=recon_loss+box_loss
-        # loss=torch.mean((pred[:,0]-sel_dist)**2)
         train_loss.backward()
         optimizer.step()
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
-        # scheduler.step()
-
         
         if i<drop_end:
             new_drop=drop*(1-i/drop_end)
@@ -639,7 +524,6 @@ def run(args):
             train_loss_log_avg.append(sum(train_loss_log)/len(train_loss_log))
         else:
             train_loss_log_avg.append((sum(train_loss_log[-val_every:]))/val_every)
-        # print(train_loss.item())
         dump_item(train_loss_log_avg, "%s/train_loss_log.pkl"%save_dir)
         
         if i%val_every==0:
@@ -653,9 +537,7 @@ def run(args):
                 for j, (val_data, val_data_range,val_dist, val_sel_ps, val_sel_sdfs, val_flip,val_reverse, val_rollaxis) in enumerate(dl_val):
                     
                     val_aug = torch.cat((val_flip, val_reverse.unsqueeze(1), val_rollaxis.unsqueeze(1)), dim=1)
-                    # val_aug_batch = val_aug.unsqueeze(1).repeat(1,samples,1)
         
-                    # print(model(x)[:,:,0].shape, y.shape)
                     val_data=val_data.to(device)
                     val_data_range=val_data_range.to(device)
                     val_dist=val_dist.to(device)
@@ -663,13 +545,10 @@ def run(args):
                     val_sel_sdfs =  val_sel_sdfs.to(device)
                     val_aug = val_aug.to(device)
                     '''truth dont need to calculate real xyz'''
-                    # use uniform grid for validation set?
                     val_uvw, val_truth, val_hwl = get_truth(val_dist, val_data_range, rand_sample_num, grid_res, device, mode='random') # batch * points# * 4
-                    # val_sel_truth = get_bound_truth(val_data_range, val_sel_ps, val_sel_sdfs)
                     val_sel_truth = val_sel_sdfs
                     val_truth_all = torch.cat((val_sel_truth, val_truth),1)
                     val_uvw_all = torch.cat((val_sel_ps, val_uvw),1)
-                    # print(val_uvw_all.shape)
                     
                     val_pred, val_box = model(val_data, val_uvw_all, val_aug)
                     val_recon_loss = torch.sum((val_pred-val_truth_all)**2)/samples
@@ -677,18 +556,14 @@ def run(args):
 
                     test_loss_recon+=val_recon_loss.item()
                     test_loss_box+=val_box_loss.item()
-                    # '''modify loss'''
-                    # test_batch_loss=torch.sum((val_pred-val_truth_all)**2)/samples/4 # number of samples, and regressing 4 values
-                    # test_loss+=test_batch_loss.item()
+                    
                 test_loss_recon=test_loss_recon/len(ds_val.all_names)
                 test_loss_box=test_loss_box/len(ds_val.all_names)
                 test_loss=test_loss_box+test_loss_recon
                 
-                # test_loss=test_loss/len(ds_val.all_names)/samples
                 test_loss_log.append(test_loss)
                 plt.figure(figsize=(8,6))
                 plt.plot(train_loss_log_avg)
-                # val_every=20
                 val_loss_log2 = [i for i in test_loss_log for j in range(val_every)]
                 plt.yscale('log')
                 plt.plot(val_loss_log2)
@@ -730,11 +605,10 @@ def run(args):
     file1.write(str(train_loss_log_avg[train_iter_min])+" \n")
     file1.write(str(test_iter_min * val_every) + "\n")
     file1.write(str(test_loss_log[test_iter_min]) + "\n")    
-    # file1.write(str(test_r2)+" \n")
     file1.close()
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--yaml', type=str, default='pretrain-config/pretrain-32.yaml')
+    parser.add_argument('--yaml', type=str, default='pretrain.yaml')
     args = parser.parse_args()
     run(args)

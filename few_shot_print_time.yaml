@@ -1,0 +1,61 @@
+
+device: 0
+gamma: 0.95
+hidden: 1024
+iteration: 1001
+label_ext: pt
+label_log: true
+label_root: cura_output/print_time
+loss_func: huber_loss
+lr: 0.0003
+lr_step: 100
+
+pre_path: virl-pretrained.pt
+pretrain: volume
+
+save_dir: scratch_experiment
+seed: 1
+shots: 100
+splits: inputs/data/cura_train_val_test.json
+test_batch: 64
+train_batch: 128
+val_every: 100
+
+data_root: simple_preprocessed
+
+#### training strategy
+
+## if train from scratch, uncomment nothing (partial: None)
+
+## if linear probe, uncomment the following # because encoder is frozen, lr_ratio does not matter
+partial: lin
+
+## if finetuning, uncomment the following
+# partial: finetune
+# lr_ratio: 0.1
+
+## if using lora, uncomment the following
+# partial: lora
+# rank: 4
+
+
+#### TDI controls
+## if not using TDI, uncomment the following
+# norm_const: 0.33 # multiply label by const
+# range_root: v_sub # this is a dummy number that will not be taken into account
+
+## if using TDI, uncomment the following
+regress_norm: true
+regress_tdi: true
+add_size: 1
+range_root: inputs/range1_cura
+# range_log: false
+range_log: true # log of range
+
+
+
+
+
+
+
+

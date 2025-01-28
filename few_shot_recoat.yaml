@@ -1,11 +1,7 @@
-# few shot exp 6
-# input: subtracted volume, code get regression model, as input (add_size=1), normalization term is taking log of time then divide by constant 3
-# adapt_lin: false
+
 add_size: 0
 regress_tdi: false
-# add_size: 1 
 
-# baseline: true
 device: 0
 gamma: 0.95
 hidden: 1024
@@ -17,13 +13,12 @@ loss_func: huber_loss
 lr: 0.0003
 lr_ratio: 1
 lr_step: 100
-partial: lora
-rank: 4
-pre_path: pretrain_experiment/exp22/153400_iter.pt
+
+pre_path: virl-pretrained.pt
 pretrain: volume
 # range_log: false
 range_log: false
-range_root: inputs/v_sub
+range_root: v_sub
 # range_root: nx-cam-output-v2/log_min_time
 regress_norm: false
 # means if i multiply at the end
@@ -36,3 +31,18 @@ splits: inputs/data/recoat_train_val_test.json
 test_batch: 64
 train_batch: 128
 val_every: 100
+
+#### training strategy
+
+## if train from scratch, uncomment nothing (partial: None)
+
+## if linear probe, uncomment the following # because encoder is frozen, lr_ratio does not matter
+partial: lin
+
+## if finetuning, uncomment the following
+# partial: finetune
+# lr_ratio: 0.1
+
+## if using lora, uncomment the following
+# partial: lora
+# rank: 4

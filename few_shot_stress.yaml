@@ -12,19 +12,18 @@ hidden: 1024
 iteration: 1001
 label_ext: pt
 label_log: true
-label_root: nx-cam-output-v2/total_time
+label_root: recoat/von_mises_stress
 loss_func: huber_loss
 lr: 0.0003
 lr_ratio: 1
 lr_step: 100
-partial: lora
-rank: 4
-pre_path: pretrain_experiment/exp22/153400_iter.pt
+
+pre_path: virl-pretrained.pt
 pretrain: volume
 # range_log: false
 range_log: true
-norm_const: 0.33
-range_root: inputs/v_sub
+norm_const: 0.25
+range_root: v_sub
 # range_root: nx-cam-output-v2/log_min_time
 regress_norm: false
 # means if i multiply at the end
@@ -33,7 +32,22 @@ regress_norm: false
 save_dir: scratch_experiment
 seed: 1
 shots: 100
-splits: inputs/data/nx-cam_train_val_test-v2-2.json
+splits: inputs/data/stress_train_val_test.json
 test_batch: 64
 train_batch: 128
 val_every: 100
+
+#### training strategy
+
+## if train from scratch, uncomment nothing (partial: None)
+
+## if linear probe, uncomment the following # because encoder is frozen, lr_ratio does not matter
+partial: lin
+
+## if finetuning, uncomment the following
+# partial: finetune
+# lr_ratio: 0.1
+
+## if using lora, uncomment the following
+# partial: lora
+# rank: 4
