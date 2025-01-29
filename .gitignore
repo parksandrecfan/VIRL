@@ -1,3 +1,4 @@
 box/
 old_code/
 .DS_Store
+.gitignore
