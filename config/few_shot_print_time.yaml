@@ -4,7 +4,7 @@ gamma: 0.95
 hidden: 1024
 iteration: 1001
 label_ext: pt
-label_log: true
+label_log: false
 label_root: cura_output/print_time
 loss_func: huber_loss
 lr: 0.0003
