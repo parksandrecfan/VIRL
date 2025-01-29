@@ -19,7 +19,7 @@
 <h3>code</h3>
 <p>To run the pretraining code, locate the BRep graph (<a href="https://cmu.box.com/s/q8acaeisz86u16s6mbca0spg3idvyojk">[simple_processed]</a>), SDF (<a href="https://cmu.box.com/s/nhm1a7hrw41jvxx1ny1o3tgu83f5cah0">[sdf_40]</a>), and the extracted height, width, length (<a href="https://cmu.box.com/s/7mxd41nwc2p6pxqomu97bn0246yfk938">[range]</a>).</p>
 <p>Then, run the pretrainig code as follows:</p>
-<p><pre><code>python pretrain.py --yaml pretrain.yaml</code></pre></p>
+<p><pre><code>python pretrain.py --yaml config/pretrain.yaml</code></pre></p>
 <p>If you wish to use the pretrained model directly, it can be downloaded <a href="https://cmu.box.com/s/z6epaqddi81frp932zfcm9aav1arsa1d">[here]</a>.</p>
 <h2>Simulations (Manufacturability Label Generation)</h2>
 <p>We chose 4 different mannufacturability tasks, spanning from plastic to metallic, subtractive machining to additive manufacturing, time estimation to structural physics quantites, in attempt to showcase our foundation model can be applied on wide range of manufacturability applications.</p>
