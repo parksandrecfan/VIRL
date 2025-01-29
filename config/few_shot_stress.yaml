@@ -22,7 +22,7 @@ pre_path: virl-pretrained.pt
 pretrain: volume
 # range_log: false
 range_log: true
-norm_const: 0.25
+norm_const: 0.33
 range_root: v_sub
 # range_root: nx-cam-output-v2/log_min_time
 regress_norm: false
